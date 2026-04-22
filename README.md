@@ -1,90 +1,152 @@
-<!--
-title: 'Serverless Framework Node Express API service backed by DynamoDB on AWS'
-description: 'This template demonstrates how to develop and deploy a simple Node Express API service backed by DynamoDB running on AWS Lambda using the Serverless Framework.'
-layout: Doc
-framework: v4
-platform: AWS
-language: nodeJS
-priority: 1
-authorLink: 'https://github.com/serverless'
-authorName: 'Serverless, Inc.'
-authorAvatar: 'https://avatars1.githubusercontent.com/u/13742415?s=200&v=4'
--->
+# AWS Node Todo API
 
-# Serverless Framework Node Express API on AWS
+Serverless Todo CRUD API built with Node.js, AWS Lambda, API Gateway, and DynamoDB.
 
-This template demonstrates how to develop and deploy a simple Node Express API service, backed by DynamoDB table, running on AWS Lambda using the Serverless Framework.
+## Tech Stack
 
-This template configures a single function, `api`, which is responsible for handling all incoming requests using the `httpApi` event. To learn more about `httpApi` event configuration options, please refer to [httpApi event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/). As the event is configured in a way to accept all incoming requests, the Express.js framework is responsible for routing and handling requests internally. This implementation uses the `serverless-http` package to transform the incoming event request payloads to payloads compatible with Express.js. To learn more about `serverless-http`, please refer to the [serverless-http README](https://github.com/dougmoscrop/serverless-http).
+- Node.js 20
+- Serverless Framework v4
+- AWS Lambda + API Gateway (REST)
+- DynamoDB
+- AWS SDK v3 (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`)
 
-Additionally, it also handles provisioning of a DynamoDB database that is used for storing data about users. The Express.js application exposes two endpoints, `POST /users` and `GET /user/:userId`, which create and retrieve a user record.
+## Features
 
-## Usage
+- Create todo
+- List todos
+- Get todo by ID
+- Update todo
+- Delete todo
 
-### Deployment
+## Project Structure
 
-Install dependencies with:
+- `serverless.yml` - infrastructure and function routing
+- `handler/createTodo.js` - create todo
+- `handler/listTodos.js` - list all todos
+- `handler/getTodo.js` - get one todo by `id`
+- `handler/updateTodo.js` - update todo fields
+- `handler/deleteTodo.js` - delete todo by `id`
 
-```
+## Prerequisites
+
+- Node.js 20+
+- AWS account + credentials configured locally
+- Serverless Framework v4 installed and authenticated
+
+## Installation
+
+```bash
 npm install
 ```
 
-and then deploy with:
+## Deploy
 
-```
-serverless deploy
-```
-
-After running deploy, you should see output similar to:
-
-```
-Deploying "aws-node-express-dynamodb-api" to stage "dev" (us-east-1)
-
-✔ Service deployed to stack aws-node-express-dynamodb-api-dev (109s)
-
-endpoint: ANY - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
-functions:
-  api: aws-node-express-dynamodb-api-dev-api (3.8 MB)
+```bash
+sls deploy
 ```
 
-_Note_: In current form, after deployment, your API is public and can be invoked by anyone. For production deployments, you might want to configure an authorizer. For details on how to do that, refer to [`httpApi` event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api/). Additionally, in current configuration, the DynamoDB table will be removed when running `serverless remove`. To retain the DynamoDB table even after removal of the stack, add `DeletionPolicy: Retain` to its resource definition.
+After deploy, Serverless prints your API endpoints.
 
-### Invocation
+Default stage is `dev`.
 
-After successful deployment, you can create a new user by calling the corresponding endpoint:
+## Environment / Resources
 
-```
-curl --request POST 'https://xxxxxx.execute-api.us-east-1.amazonaws.com/users' --header 'Content-Type: application/json' --data-raw '{"name": "John", "userId": "someUserId"}'
-```
+- DynamoDB table name pattern: `todos-table-${sls:stage}`
+- Lambda env var: `TODO_TABLE`
+- DynamoDB primary key: `id` (string)
 
-Which should result in the following response:
+## API Endpoints
+
+Base URL (example):
+
+`https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev`
+
+### Create Todo
+
+`POST /todos`
+
+Request:
 
 ```json
-{ "userId": "someUserId", "name": "John" }
+{
+  "todo": "buy milk"
+}
 ```
 
-You can later retrieve the user by `userId` by calling the following endpoint:
+Example:
 
-```
-curl https://xxxxxxx.execute-api.us-east-1.amazonaws.com/users/someUserId
+```bash
+curl -X POST "https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev/todos" \
+  -H "Content-Type: application/json" \
+  -d "{\"todo\":\"buy milk\"}"
 ```
 
-Which should result in the following response:
+### List Todos
+
+`GET /todos`
+
+Example:
+
+```bash
+curl "https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev/todos"
+```
+
+### Get Todo
+
+`GET /todos/{id}`
+
+Example:
+
+```bash
+curl "https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev/todos/<todo-id>"
+```
+
+### Update Todo
+
+`PUT /todos/{id}`
+
+Request:
 
 ```json
-{ "userId": "someUserId", "name": "John" }
+{
+  "todo": "buy bread",
+  "completed": true
+}
 ```
 
-### Local development
+Example:
 
-The easiest way to develop and test your function is to use the `dev` command:
-
+```bash
+curl -X PUT "https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev/todos/<todo-id>" \
+  -H "Content-Type: application/json" \
+  -d "{\"todo\":\"buy bread\",\"completed\":true}"
 ```
-serverless dev
+
+### Delete Todo
+
+`DELETE /todos/{id}`
+
+Example:
+
+```bash
+curl -X DELETE "https://7k2id6mhz3.execute-api.us-east-1.amazonaws.com/dev/todos/<todo-id>"
 ```
 
-This will start a local emulator of AWS Lambda and tunnel your requests to and from AWS Lambda, allowing you to interact with your function as if it were running in the cloud.
+## Common Issues
 
-Now you can invoke the function as before, but this time the function will be executed locally. Now you can develop your function locally, invoke it, and see the results immediately without having to re-deploy.
+- `{"message":"Missing Authentication Token"}`:
+  - Wrong HTTP method or wrong path/stage.
+  - Example: opening endpoint in browser sends `GET` by default.
+- `{"message":"Internal server error"}`:
+  - Check Lambda logs:
+    ```bash
+    sls logs -f <function-name> --stage dev --region us-east-1
+    ```
 
-When you are done developing, don't forget to run `serverless deploy` to deploy the function to the cloud.
+## Useful Commands
+
+```bash
+sls deploy
+sls remove
+sls logs -f create --stage dev --region us-east-1
+```
